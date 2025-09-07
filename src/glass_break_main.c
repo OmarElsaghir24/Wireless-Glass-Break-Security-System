@@ -23,7 +23,6 @@
 #include "spi0.h"
 #include "wait.h"
 #include "adc0.h"
-#include "wd0.h"
 #include "battery_level.h"
 #include "glass_break_main.h"
 #include "NRF24L01.h"
@@ -44,8 +43,7 @@ uint16_t sum = 0; // total fits in 16b since 12b adc output x 16 samples
 /***************************************** SUB-ROUTINES ******************************************/
 
 // Initialize Hardware
-void initHw(void)
-{
+void initHw(void) {
 	// Initialize system clock to 40 MHz
 	initSystemClockTo40Mhz();
 
@@ -117,8 +115,8 @@ void initHw(void)
 	HIB_CTL_R |= HIB_CTL_VBATSEL_2_3V | HIB_CTL_VABORT | HIB_CTL_BATWKEN;
 	while(!(HIB_CTL_R & HIB_CTL_WRC));
 	HIB_IM_R |= (HIB_IM_RTCALT0 | HIB_IM_EXTW | HIB_IM_LOWBAT);
-	while(!(HIB_CTL_R & HIB_CTL_WRC));
-	NVIC_EN1_R = 1 << (INT_HIBERNATE-16-32);
+	//while(!(HIB_CTL_R & HIB_CTL_WRC));
+	//NVIC_EN1_R = 1 << (INT_HIBERNATE-16-32);
 }
 
 // Blinks Green LED for indicated number of times.
@@ -148,48 +146,8 @@ void test_leds(void)
 	GREEN_LED = 0;
 }
 
-void disableWatchdogInterrupt()
-{
-    WATCHDOG0_LOCK_R = WDT_LOCK_UNLOCK;
-    WATCHDOG0_CTL_R &= ~WDT_CTL_INTEN;
-    WATCHDOG0_LOCK_R = 0;
-}
-
-void enableWatchdogInterrupt()
-{
-    WATCHDOG0_LOCK_R = WDT_LOCK_UNLOCK;
-    WATCHDOG0_CTL_R |= WDT_CTL_INTEN;
-    WATCHDOG0_LOCK_R = 0;
-}
-
-void watchdog_Isr(void)
-{
-	//resetWatchdog0();
-	WATCHDOG0_ICR_R = 0;
-	GREEN_LED = 1;
-    waitMicrosecond(1000000);
-    GREEN_LED = 0;
-	/*nrf24lo1 packet;
-	packet.frame_id = 1;
-	packet.type = 0x04;
-	packet.dataLength = 2;
-	packet.data[0] = 0x01;
-	packet.data[1] = 0x50;*/
-	sendPacket(&packet);
-	disableWatchdogInterrupt();
-	//while(!(HIB_CTL_R & HIB_CTL_WRC));
-	//HIB_CTL_R |= HIB_CTL_HIBREQ;
-}
-
 void checkBatteryLevel()
 {
-    // Ensure write complete before modifying HIB_CTL_R
-    //while (!(HIB_CTL_R & HIB_CTL_WRC));
-
-    // Trigger a manual battery voltage check
-    //HIB_CTL_R |= HIB_CTL_BATCHK;
-    //while (!(HIB_CTL_R & HIB_CTL_WRC));
-
     // Check if the battery voltage is below VBATSEL threshold (VBATSEL is used only if not using default voltage level, which is 2.1 Volts)
     if (HIB_RIS_R & HIB_RIS_LOWBAT) {
         putsUart0("Battery voltage is LOW!\n");
@@ -200,14 +158,11 @@ void checkBatteryLevel()
 
 void setAlarm(void)
 {
-	// uint32_t nextDay = 86400;
 	uint32_t currentTime;
 	uint32_t alarmTime, time;
 	uint32_t num_seconds;
-	// uint32_t seconds;
 
 	while(!(HIB_CTL_R & HIB_CTL_WRC));
-	//while((~HIB_CTL_R & HIB_CTL_WRC));
 	currentTime = HIB_RTCC_R % 86400;
 	uint32_t hh1, mm1, sec1;
 	hh1 = currentTime / 3600;
@@ -217,22 +172,15 @@ void setAlarm(void)
 	snprintf(string, sizeof(string), "Time: %d:%02d:%02d\n", hh1, mm1, sec1);
 	putsUart0(string);
 
-	//alarmTime = currentTime + 10;
-
-	if(currentTime < 43200) {
-		//alarmTime = 43200;
+	if(currentTime < 43200)
+	{
 		alarmTime = currentTime + 60;
-		/*GREEN_LED = 1;
-		waitMicrosecond(1000000);
-		GREEN_LED = 0;
-		waitMicrosecond(1000000);*/
 	}
-	else {
-		//alarmTime = 0 + 86400;
+	else
+	{
 		alarmTime = currentTime + (86400-currentTime);
-		//alarmTime = 43260;
 	}
-	//alarmTime = 43200;
+
 	while(!(HIB_CTL_R & HIB_CTL_WRC));
 	HIB_RTCM0_R = alarmTime;
 	while(!(HIB_CTL_R & HIB_CTL_WRC));
@@ -244,13 +192,12 @@ void setAlarm(void)
 	uint32_t hh, mm;
 	hh = time / 3600;
 	mm = (time % 3600) / 60;
-	snprintf(string, sizeof(string), "Alarm Time: %02d:%02d\n", hh, mm);
+	snprintf(string, sizeof(string), "Alarm Time: %d:%02d\n", hh, mm);
 	putsUart0(string);
 }
 
 // RTC Interrupt Handler
-void RTCIsr(void)
-{
+void RTCIsr(void) {
 	// Wake from RTC Timer
 	if (HIB_MIS_R & HIB_MIS_RTCALT0) {
 	   	while(!(HIB_CTL_R & HIB_CTL_WRC));
@@ -261,58 +208,23 @@ void RTCIsr(void)
 		// uint32_t storedTime = storedData >> 16;  // Upper 16 bits store current time
 		uint32_t storedAlarm = storedData & 0xFFFF; // Lower 16 bits store alarm time
 
-		/*while (!(HIB_CTL_R & HIB_CTL_WRC));
-			HIB_RTCLD_R = storedTime;  // Restore time
-
-		uint32_t h = storedTime / 3600;
-		uint32_t m = (storedTime % 3600) / 60;
-		snprintf(string, sizeof(string), "Stored Time: %d:%02d\n", h, m);
-		putsUart0(string);*/
-
 		while (!(HIB_CTL_R & HIB_CTL_WRC));
 		HIB_RTCM0_R = storedAlarm; // Restore alarm
 
+		initHw();
+
 		uint32_t hh = storedAlarm / 3600;
 		uint32_t mm = (storedAlarm % 3600) / 60;
-		snprintf(string, sizeof(string), "Stored Alarm Time: %02d:%02d\n", hh, mm);
+		snprintf(string, sizeof(string), "Stored Alarm Time: %d:%02d\n", hh, mm);
 		putsUart0(string);
 
 		// Function check board LED's on Startup
-        test_leds();
+		test_leds();
 
-        // Join the server
-        serverJoin();
+		// Join the server
+		serverJoin();
 
-        setAlarm();
-
-		// alarmTrig = true;
-		// GREEN_LED = 1;
-		// waitMicrosecond(1000000);
-		// GREEN_LED = 0;
-		// waitMicrosecond(1000000);
-
-		/*// Restore clock time
-		while(!(HIB_CTL_R & HIB_CTL_WRC));
-		HIB_RTCLD_R = storedTime;
-		uint32_t h = storedTime / 3600;
-		uint32_t m = (storedTime % 3600) / 60;
-		snprintf(string, sizeof(string), "Stored Time: %d:%02d\n", h, m);
-		putsUart0(string);*/
-		//checkBatteryLevel();
-		//nrf24lo1 packet;
-       	packet.frame_id = 0;
-       	packet.type = 0x0B;
-       	packet.dataLength = 1;
-       	packet.data[0] = 0x63;
-       	//sendPacket(&packet);
-       	//WATCHDOG0_CTL_R |= WDT_CTL_INTEN;
-       	//enableWatchdogInterrupt();
-
-        // setAlarm();
-
-		//waitMicrosecond(3000000);
-        //while(!(HIB_CTL_R & HIB_CTL_WRC));
-        //HIB_CTL_R |= HIB_CTL_HIBREQ;
+		setAlarm();
 	}
 
 	// Wake from Glass Break Sensor (Wake Pin)
@@ -332,25 +244,22 @@ void RTCIsr(void)
 		while (!(HIB_CTL_R & HIB_CTL_WRC));
 		HIB_RTCM0_R = storedAlarm; // Restore alarm
 
+		initHw();
+
 		alarmTrig = false;
 
-		snprintf(string, sizeof(string), "Restored Time: %02d:%02d\n", storedTime / 3600, (storedTime % 3600) / 60);
+		snprintf(string, sizeof(string), "Restored Time: %d:%02d\n", storedTime / 3600, (storedTime % 3600) / 60);
 		putsUart0(string);
-		snprintf(string, sizeof(string), "Restored Alarm Time: %02d:%02d\n", storedAlarm / 3600, (storedAlarm % 3600) / 60);
+		snprintf(string, sizeof(string), "Restored Alarm Time: %d:%02d\n", storedAlarm / 3600, (storedAlarm % 3600) / 60);
 		putsUart0(string);
 
 		// Function check board LED's on Startup
-        test_leds();
+		test_leds();
 
-        // Join the server
-        serverJoin();
+		// Join the server
+		serverJoin();
 
-        setAlarm();
-
-		//checkBatteryLevel();
-
-		//while (!(HIB_CTL_R & HIB_CTL_WRC));  // Wait for write complete
-		//HIB_IM_R |= HIB_IM_EXTW;  // Re-enable External Wake Interrupt
+		setAlarm();
 	}
 
 	// Wake from Low Battery Warning
@@ -372,9 +281,9 @@ void RTCIsr(void)
 
 		alarmTrig = false;
 
-		snprintf(string, sizeof(string), "Restored Time: %02d:%02d\n", storedTime / 3600, (storedTime % 3600) / 60);
+		snprintf(string, sizeof(string), "Restored Time: %d:%02d\n", storedTime / 3600, (storedTime % 3600) / 60);
 		putsUart0(string);
-		snprintf(string, sizeof(string), "Restored Alarm Time: %02d:%02d\n", storedAlarm / 3600, (storedAlarm % 3600) / 60);
+		snprintf(string, sizeof(string), "Restored Alarm Time: %d:%02d\n", storedAlarm / 3600, (storedAlarm % 3600) / 60);
 		putsUart0(string);
 	}
 	else {
@@ -457,8 +366,7 @@ void GPIOPortB_Handler(void)
     printHex8(fifo_status);  // Should show TX_EMPTY = 1 after each send
 }
 
-void GPIOC_Handler(void)
-{
+void GPIOC_Handler(void) {
 	if(GPIO_PORTC_RIS_R & PIEZOELECTRIC_MASK) {
 	     GPIO_PORTC_ICR_R = PIEZOELECTRIC_MASK;
 	     putsUart0("Glass struck with object\n");
@@ -472,8 +380,6 @@ void GPIOC_Handler(void)
 		 uint32_t alarmTime = HIB_RTCM0_R;
 		 HIB_DATA_R = (currentTime << 16) | (alarmTime & 0xFFFF);
 
-		 //while (!(HIB_CTL_R & HIB_CTL_WRC));
-		 //HIB_CTL_R |= HIB_CTL_VDD3ON;  // Keep power ON for HIB_DATA_R
 		 while (!(HIB_CTL_R & HIB_CTL_WRC));
 		 HIB_RIS_R |= HIB_RIS_EXTW;
 
@@ -485,8 +391,7 @@ void GPIOC_Handler(void)
 }
 
 // GPIOF Interrupt Handler. For testing external wake-up from Hibernation
-void GPIOF_Handler(void)
-{
+void GPIOF_Handler(void) {
     // Check if PF0 caused the interrupt by pressing button
     if (GPIO_PORTF_RIS_R & SW2_MASK) {
         // Handle button press (PF0)
@@ -505,17 +410,8 @@ void GPIOF_Handler(void)
 		while (!(HIB_CTL_R & HIB_CTL_WRC));
 		HIB_RIS_R |= HIB_RIS_EXTW;
 
-        //while (!(HIB_CTL_R & HIB_CTL_WRC));  // Wait for write complete
-        //HIB_IM_R &= ~(HIB_IM_RTCALT0 | HIB_IM_EXTW | HIB_IM_LOWBAT);            // Disable External Wake Interrupt
-        // Clear any pending wake-up flags before hibernation
-		//while (!(HIB_CTL_R & HIB_CTL_WRC));
-		//HIB_IC_R |= HIB_IC_EXTW;   // Clear External Wake flag
 		waitMicrosecond(100000);             // Small delay to debounce button
 
-        //while (!(HIB_CTL_R & HIB_CTL_WRC));  // Wait for write control ready
-        //HIB_CTL_R |= HIB_CTL_HIBREQ;         // Enter Hibernation mode
-        // This should NEVER print if hibernation is working
-        //putsUart0("Entered Hibernation\n");
     }
 }
 
@@ -545,9 +441,6 @@ int main(void)
 	// Initialize Battery Level Indicator
 	init_battery_level();
 
-    // Initialize Watchdog Timer
-	initWatchdog0(2e6, 40e6);
-
 	uint32_t hours, seconds;
     uint32_t minutes, time_local;
 	uint32_t remaining_seconds;
@@ -575,23 +468,27 @@ int main(void)
 		while (!(HIB_CTL_R & HIB_CTL_WRC));
 		HIB_RTCM0_R = storedAlarm; // Restore alarm
 
-		// Initialize Hardware
-		initHw();
-
-		alarmTrig = true;
-
 		uint32_t hh = storedAlarm / 3600;
 		uint32_t mm = (storedAlarm % 3600) / 60;
-		snprintf(string, sizeof(string), "Stored Alarm Time: %02d:%02d\n", hh, mm);
+
+		initHw();
+
+	    // Initialize SPI0
+	    initSpi0(USE_SSI0_RX);
+	    setSpi0BaudRate(10e6, 40e6);
+	    setSpi0Mode(0, 0);
+
+	    // Initialize Wireless Module
+	    initNrf24l01Receiver();
+
+	    // Initialize Battery Level Indicator
+	    init_battery_level();
+
+	    alarmTrig = true;
+
+		snprintf(string, sizeof(string), "Stored Alarm Time: %d:%02d\n", hh, mm);
 		putsUart0(string);
 
-		// Function check board LED's on Startup
-        test_leds();
-
-        // Join the server
-        serverJoin();
-
-        setAlarm();
     }
 
     if (HIB_RIS_R & HIB_RIS_EXTW) {
@@ -610,23 +507,25 @@ int main(void)
 		while (!(HIB_CTL_R & HIB_CTL_WRC));
 		HIB_RTCM0_R = storedAlarm; // Restore alarm
 
-		// Initialize Hardware
 		initHw();
+
+		// Initialize SPI0
+	    initSpi0(USE_SSI0_RX);
+	    setSpi0BaudRate(10e6, 40e6);
+		setSpi0Mode(0, 0);
+
+		// Initialize Wireless Module
+		initNrf24l01Receiver();
+
+		// Initialize Battery Level Indicator
+		init_battery_level();
 
 		alarmTrig = false;
 
-		snprintf(string, sizeof(string), "Restored Time: %02d:%02d\n", storedTime / 3600, (storedTime % 3600) / 60);
+		snprintf(string, sizeof(string), "Restored Time: %d:%02d\n", storedTime / 3600, (storedTime % 3600) / 60);
 		putsUart0(string);
-		snprintf(string, sizeof(string), "Restored Alarm Time: %02d:%02d\n", storedAlarm / 3600, (storedAlarm % 3600) / 60);
+		snprintf(string, sizeof(string), "Restored Alarm Time: %d:%02d\n", storedAlarm / 3600, (storedAlarm % 3600) / 60);
 		putsUart0(string);
-
-		// Function check board LED's on Startup
-        test_leds();
-
-        // Join the server
-        serverJoin();
-
-        setAlarm();
 
     }
 
@@ -644,7 +543,7 @@ int main(void)
 	HIB_CTL_R |= HIB_CTL_VDD3ON;
 	while(!(HIB_CTL_R & HIB_CTL_WRC));
 	HIB_CTL_R |= HIB_CTL_HIBREQ;
-	// }
 
 	while(true);
+
 }
