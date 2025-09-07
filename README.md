@@ -4,10 +4,10 @@ Implemented a wireless glass break security system with the TM4C123GH6PM microco
 ![Wireless Glass Break Security System](https://github.com/user-attachments/assets/150c1e41-db03-4cd0-982b-2e4dff8f865e)
 
 # Features
-*`nrf24l01+ wireless module`: used to transmit to and receive packets from a remote server. Goes through a 3-way handshake to establish connection with remote server. Microcontroller communicates with nrf24l01+ through SPI interface.
-*`Wake-up from external event`: microcontroller wakes up from hibernation when an object strikes the piezoelectric sensor attached to glass.
-*`Alarm-triggered wake-up event`: microcontroller wakes up from hibernation when an alarm time has been reached. Implemented using the Hibernation module.
-*`Low Battery wake-up event`: microcontroller wakes up from hibernation due to low power from battery pack.
+* `nrf24l01+ wireless module`: used to transmit to and receive packets from a remote server. Goes through a 3-way handshake to establish connection with remote server. Microcontroller communicates with nrf24l01+ through SPI interface.
+* `Wake-up from external event`: microcontroller wakes up from hibernation when an object strikes the piezoelectric sensor attached to glass.
+* `Alarm-triggered wake-up event`: microcontroller wakes up from hibernation when an alarm time has been reached. Implemented using the Hibernation module.
+* `Low Battery wake-up event`: microcontroller wakes up from hibernation due to low power from battery pack.
 
 # Hardware Components
 |                           |
