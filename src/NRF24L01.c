@@ -302,11 +302,15 @@ void serverJoin(void)
         // Received SYNC packet from Wireless Hub
         if (pkt->type == 0x04) {
             enableTransmitter();
+            //waitMicrosecond(1000000);
             putsUart0("SYNC packet received!\n");
+            //sndPacket.frame_id = pkt->data[0];
             sndPacket.frame_id = 0x00;
             sndPacket.type = 0x02;
             sndPacket.dataLength = 0x01;
-            sndPacket.data[0] = 0x81;
+            //sndPacket.data[0] = 0x81;
+            sndPacket.data[0] = 0x01;
+            //sndPacket.data[0] = pkt->data[0];
             sndPacket.checksum =  crc8_ccitt((uint8_t*)&sndPacket, 32);
             sendPacket(&sndPacket);
             putsUart0("Sending JOIN_REQUEST\n");
@@ -316,7 +320,7 @@ void serverJoin(void)
         // }
 
         // waitMicrosecond(2000000);
-        // enableReceiver();
+         //enableReceiver();
 
         // Join Response Received
         else if (pkt->type == 0x03) {
@@ -344,8 +348,11 @@ void serverJoin(void)
 
             // Send Battery Level Message
             enableTransmitter();
+            //waitMicrosecond(1000000);
             //writeRegister(STATUS, (1 << 6)); // Clear RX_DR flag
             sndPacket.frame_id = pkt->frame_id;
+            //sndPacket.frame_id = 0x00;
+            //sndPacket.frame_id = pkt->data[0];
             sndPacket.type = 0x0B;
             sndPacket.dataLength = 0x01;
             sndPacket.data[0] = battery_level;
