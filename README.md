@@ -18,6 +18,10 @@ Implemented a wireless glass break security system with the TM4C123GH6PM microco
 | Battery pack |
 | 1.25 Volt batteries (4) |
 
+# Circuit Diagram
+
+![IoT Project 2 Voltage Divider](https://github.com/user-attachments/assets/b337d8a1-a094-4ea0-8f0d-15d64bed98fd)
+
 # Peripherals Used
 |                   |
 |-------------------|
